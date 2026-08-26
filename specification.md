@@ -2,7 +2,7 @@
 
 ## 1. 概要
 
-Markdown Package（以下、MDPKG）は、Markdown 文書と、その文書から参照される画像、図、図のソースデータ、その他の付随リソースを 1 つの ZIP アーカイブにまとめるためのファイルフォーマットです。
+Markdown Package（以下、MDPKG）は、1 つ以上の Markdown 文書と、それらの文書から参照される画像、図、図のソースデータ、その他の付随リソースを 1 つの ZIP アーカイブにまとめるためのファイルフォーマットです。
 
 ファイル拡張子は `.mdpkg` とします。
 
@@ -12,6 +12,8 @@ MDPKG の基本方針は次のとおりです。
 
 - ZIP をコンテナ形式として使用する
 - 本文は一般的な Markdown として保存する
+- 複数の Markdown 文書を格納できる
+- Markdown 文書および関連リソースをサブディレクトリに配置できる
 - Markdown から参照する画像は一般的な画像形式を使用する
 - PlantUML や Mermaid などの図については、必要に応じて編集可能なソースとレンダリング済み画像の両方を格納する
 - MDPKG 固有のメタデータがなくても、基本的な文書内容を閲覧できるようにする
@@ -59,13 +61,19 @@ ZIP 展開ツールによって次のようなディレクトリとして展開�
 
 ```text
 system-design/
-├─ README.md
+├─ index.md
 ├─ manifest.json
-├─ diagrams/
-│  ├─ architecture.puml
-│  └─ architecture.svg
-└─ images/
-   └─ screenshot.png
+├─ getting-started/
+│  ├─ introduction.md
+│  ├─ diagrams/
+│  │  ├─ flow.puml
+│  │  └─ flow.svg
+│  └─ images/
+│     └─ screenshot.png
+└─ guides/
+   ├─ advanced.md
+   └─ images/
+      └─ configuration.png
 ```
 
 
@@ -76,32 +84,18 @@ system-design/
 
 MDPKG は、専用アプリケーションが存在しない環境でも可能な限り内容を閲覧できなければなりません。
 
-MDPKG 対応文書は、原則として次の手順で閲覧可能であるべきです。
-
 1. `.mdpkg` ファイルを ZIP として展開する
-2. ルートディレクトリの `README.md` を開く
+2. `manifest.json` の `entrypoint` に指定された Markdown 文書を開く
 3. 一般的な Markdown Viewer で本文を閲覧する
-4. Markdown から参照される画像を一般的な画像 Viewer で閲覧する
-5. 必要に応じて PlantUML、Mermaid、Graphviz などのソースを対応ツールで開く
+4. 必要に応じて Markdown 文書間の相対リンクをたどる
+5. Markdown から参照される画像を一般的な画像 Viewer で閲覧する
+6. 必要に応じて PlantUML、Mermaid、Graphviz などのソースを対応ツールで開く
 
 ### 4.2 Markdown の自己完結性
 
-`README.md` は、MDPKG 固有のメタデータを解釈しなくても文書として成立しなければなりません。
+各 Markdown 文書は、MDPKG 固有のメタデータを解釈しなくても可能な限り文書として成立するべきです。
 
-したがって、基本的な文書表示のために `manifest.json` を必須情報源としてはなりません。
-
-例えば、次のような MDPKG 固有記法のみで図を参照することは推奨されません。
-
-```text
-:::diagram{src="diagrams/architecture.puml"}
-:::
-```
-
-代わりに、一般的な Markdown の画像参照を使用します。
-
-```markdown
-![システム構成図](diagrams/architecture.svg)
-```
+したがって、 `manifest.json` はエントリポイントの特定などパッケージレベルの情報には使用されますが、個々の Markdown 文書の本文や基本的な表示内容を解釈するために必須であってはなりません。
 
 ### 4.3 標準形式の利用
 
@@ -127,56 +121,67 @@ MDPKG 固有のバイナリデータ形式は、原則として定義しませ�
 
 ## 5. 基本ディレクトリ構造
 
-MDPKG v1 の基本構造は次のとおりです。
+MDPKG v2 では、Markdown 文書および関連リソースを任意のサブディレクトリに配置できます。
 
 ```text
 /
-├─ README.md
+├─ index.md
 ├─ manifest.json
-├─ diagrams/
-├─ images/
-└─ attachments/
+├─ getting-started/
+│  ├─ introduction.md
+│  ├─ diagrams/
+│  └─ images/
+└─ guides/
+   ├─ advanced.md
+   └─ attachments/
 ```
 
-各ディレクトリは、使用しない場合には省略できます。
+`images`、`diagrams`、`attachments` などのディレクトリは、ルートディレクトリだけでなく任意のサブディレクトリに配置できます。
+
+これらのディレクトリ名は予約語ではなく、リソースを整理するための推奨名称です。
 
 最小の MDPKG は次の構造です。
 
 ```text
 /
-├─ README.md
+├─ index.md
 └─ manifest.json
 ```
 
+`index.md` というファイル名は一例であり、エントリポイントの Markdown 文書名は任意です。
 
 
-## 6. README.md
+## 6. Markdown 文書
 
 ### 6.1 概要
 
-`README.md` は MDPKG のメイン文書です。
+MDPKG v2 では、1 つ以上の Markdown 文書を格納できます。
 
-MDPKG v1 では、ルートディレクトリの `README.md` を既定のエントリポイントとします。
+パッケージを開いた際に最初に表示する Markdown 文書は、`manifest.json` の `entrypoint` で指定します。
 
-ファイル名は大文字・小文字を厳密に区別し、次の名称でなければなりません（`readme.md` などの別表記は認めません）。
+Markdown 文書はルートディレクトリだけでなく、任意のサブディレクトリに配置できます。
 
-```text
-README.md
-```
+v1 では `README.md` が必須でしたが、 v2 では必須ではありません。
 
 ### 6.2 文字コード
 
-`README.md` は UTF-8 で保存しなければなりません。
+すべての Markdown 文書は UTF-8 で保存しなければなりません。
 
 UTF-8 BOM は使用しないことを推奨します。
 
 ### 6.3 Markdown 方言
 
-MDPKG v1 の推奨 Markdown 方言は GitHub Flavored Markdown（GFM）です。
+MDPKG v2 の推奨 Markdown 方言は GitHub Flavored Markdown（GFM）です。
 
-ただし、基本的な Markdown Viewer での可搬性を維持するため、特定の Viewer にのみ依存する拡張構文の使用は可能な限り避けることを推奨します。
+### 6.4 文書タイトル
 
-### 6.4 リソース参照
+各 Markdown 文書のタイトルは、その文書内に出現する最初の H1 見出しとします。
+
+Markdown 文書に H1 見出しが存在しない場合、その文書のタイトルは未定義とします。
+
+MDPKG 対応アプリケーションは、表示上の代替としてファイル名を使用しても構いません。
+
+### 6.5 リソース参照
 
 パッケージ内リソースは相対パスで参照します。
 
@@ -202,23 +207,15 @@ MDPKG v1 の推奨 Markdown 方言は GitHub Flavored Markdown（GFM）です。
 ![画像](file:///home/user/image.png)
 ```
 
-### 6.5 パッケージ外参照
+相対パスは、その参照を記述している Markdown 文書が存在するディレクトリを基準として解決します。
 
-パッケージのルートディレクトリより上位への相対参照は禁止します。
+Markdown 文書間も通常の相対リンクで参照できます。
 
-禁止例:
+### 6.6 パッケージ外参照
 
-```markdown
-![画像](../image.png)
-```
+MDPKG v2 では、サブディレクトリ間の参照のために `..` を含む相対パスを使用できます。
 
-```markdown
-![画像](../../secret.png)
-```
-
-MDPKG 対応アプリケーションは、このような参照を拒否しなければなりません。
-
-
+ただし、参照パスを正規化した結果がパッケージルートより上位を指してはなりません。
 
 ## 7. manifest.json
 
@@ -249,8 +246,8 @@ MDPKG 対応アプリケーションは、このような参照を拒否しな�
 ```json
 {
   "format": "mdpkg",
-  "version": "1.0",
-  "entrypoint": "README.md"
+  "version": "2.0",
+  "entrypoint": "index.md"
 }
 ```
 
@@ -259,9 +256,9 @@ MDPKG 対応アプリケーションは、このような参照を拒否しな�
 ```json
 {
   "format": "mdpkg",
-  "version": "1.0",
-  "entrypoint": "README.md",
-  "title": "システム設計書",
+  "version": "2.0",
+  "entrypoint": "index.md",
+  "description": "Example System のアーキテクチャ設計書",
   "resources": [
     {
       "source": "diagrams/architecture.puml",
@@ -301,32 +298,22 @@ MDPKG 対応アプリケーションは、この値を用いて MDPKG である�
 MDPKG のフォーマットバージョンを文字列で指定します。
 
 ```json
-"version": "1.0"
+"version": "2.0"
 ```
 
 ### 8.3 entrypoint
 
 必須フィールドです。
 
-メイン文書への相対パスを指定します。
-
-MDPKG v1 では、`entrypoint` はルートディレクトリの `README.md` を指さなければなりません。
+パッケージを開いた際に最初に表示する Markdown 文書への、パッケージルートからの相対パスを指定します。
 
 ```json
-"entrypoint": "README.md"
+"entrypoint": "index.md"
 ```
 
-### 8.4 title
+`entrypoint` はパッケージ内部に存在する Markdown 文書を指さなければなりません。
 
-任意フィールドです。
-
-文書タイトルを指定します。
-
-```json
-"title": "システム設計書"
-```
-
-### 8.5 description
+### 8.4 description
 
 任意フィールドです。
 
@@ -336,11 +323,13 @@ MDPKG v1 では、`entrypoint` はルートディレクトリの `README.md` を
 "description": "Example System のアーキテクチャ設計書"
 ```
 
-### 8.6 resources
+### 8.5 resources
 
 任意フィールドです。
 
 図ソースとレンダリング済みリソースなどの関係を定義します。
+
+`source` および `rendered` はパッケージルートからの相対パスとして指定します。
 
 例:
 
@@ -365,56 +354,9 @@ MDPKG v1 では、`entrypoint` はルートディレクトリの `README.md` を
 
 ## 9. リソース
 
-### 9.1 images ディレクトリ
+`images`、`diagrams`、`attachments` などのディレクトリは任意のサブディレクトリに配置できます。
 
-一般的な画像ファイルを格納します。
-
-例:
-
-```text
-images/
-├─ screenshot.png
-├─ logo.svg
-└─ photo.webp
-```
-
-推奨形式:
-
-- SVG
-- PNG
-- JPEG
-- WebP
-
-### 9.2 diagrams ディレクトリ
-
-図のソースデータおよびレンダリング済み画像を格納します。
-
-例:
-
-```text
-diagrams/
-├─ architecture.puml
-├─ architecture.svg
-├─ sequence.mmd
-├─ sequence.svg
-├─ database.dot
-└─ database.svg
-```
-
-### 9.3 attachments ディレクトリ
-
-Markdown から直接表示しない付随ファイルを格納できます。
-
-例:
-
-```text
-attachments/
-├─ sample.json
-├─ schema.yaml
-└─ example.csv
-```
-
-
+これらの名称は予約語ではありません。
 
 ## 10. 図データ
 
@@ -572,19 +514,11 @@ MDPKG 対応 Viewer は、セキュリティおよびプライバシー保護の
 
 MDPKG 対応アプリケーションは ZIP エントリを展開または読み込む際に、パッケージルート外への書き込みを防止しなければなりません。
 
-次のような ZIP エントリは拒否しなければなりません。
-
-```text
-../../evil.exe
-```
-
-```text
-../outside.txt
-```
-
 ### 13.2 パス・トラバーサル
 
-Markdown、manifest、およびその他の内部参照について、パッケージルート外への参照を禁止します。
+Markdown、manifest、およびその他の内部参照について、正規化後のパスがパッケージルート外を指すことを禁止します。
+
+MDPKG v2 では `..` を含む相対パスを使用できますが、正規化後の参照先は必ずパッケージ内部に留まらなければなりません。
 
 ### 13.3 HTML
 
@@ -606,8 +540,6 @@ Markdown 内の raw HTML の扱いは Viewer 実装に依存します。
 MDPKG 文書に含まれる JavaScript を自動実行してはなりません。
 
 ### 13.5 SVG
-
-SVG はスクリプトや外部リソース参照を含む可能性があります。
 
 MDPKG 対応 Viewer は、SVG を表示する際に適切なサニタイズまたは隔離を行わなければなりません。
 
@@ -651,13 +583,21 @@ images\example.png
 
 ### 14.2 相対パス
 
-すべての内部リソース参照は相対パスとします。
+内部リソース参照および Markdown 文書間リンクは相対パスとします。
 
-### 14.3 大文字・小文字
+Markdown 内の相対パスは、その Markdown 文書が存在するディレクトリを基準に解決します。
+
+`manifest.json` 内の `entrypoint`、`resources[].source`、`resources[].rendered` などのパスは、パッケージルートを基準に解決します。
+
+### 14.3 親ディレクトリ
+
+Markdown 内では `..` を含む相対パスを使用できます。
+
+ただし、正規化後の参照先がパッケージルートを越えてはなりません。
+
+### 14.4 大文字・小文字
 
 ファイル名の大文字・小文字を区別する環境が存在するため、参照時にはファイル名の大文字・小文字を正確に一致させなければなりません。
-
-
 
 ## 15. MIME Type
 
@@ -677,9 +617,12 @@ MDPKG Viewer は最低限、次の機能を提供することを推奨します�
 
 - `.mdpkg` の ZIP コンテナ読み込み
 - `manifest.json` の読み込み
-- `README.md` の Markdown レンダリング
+- `entrypoint` に指定された Markdown 文書のレンダリング
+- 複数 Markdown 文書の読み込み
+- サブディレクトリの取り扱い
+- Markdown 文書間の相対リンクの解決
 - パッケージ内画像の表示
-- 相対リンクの解決
+- 相対リソース参照の解決
 - パッケージ外パスへのアクセス防止
 
 追加機能として、次を実装できます。
@@ -702,7 +645,9 @@ MDPKG Viewer は最低限、次の機能を提供することを推奨します�
 
 ## 17. MDPKG Editor
 
-編集機能を持つアプリケーションは、図ソースを変更した場合に対応するレンダリング済み画像を再生成することを推奨します。
+編集機能を持つアプリケーションは、複数の Markdown 文書およびサブディレクトリを扱えることを推奨します。
+
+また、図ソースを変更した場合に対応するレンダリング済み画像を再生成することを推奨します。
 
 例えば、
 
@@ -724,32 +669,7 @@ diagrams/architecture.svg
 
 ## 18. MDPKG 作成時の推奨処理
 
-MDPKG Writer は、次の流れで文書を作成することを推奨します。
-
-```text
-Markdown
-   │
-   ├─ images/
-   │
-   └─ diagram sources
-         │
-         ▼
-   図をレンダリング
-         │
-         ▼
-   rendered images
-         │
-         ▼
-   manifest.json 作成
-         │
-         ▼
-   ZIP パッケージ化
-         │
-         ▼
-   document.mdpkg
-```
-
-
+MDPKG Writer は、複数の Markdown 文書、画像、添付ファイル、図ソース、レンダリング済み画像、`manifest.json` を ZIP パッケージ化して `.mdpkg` を生成します。
 
 ## 19. 展開後の可読性
 
@@ -765,7 +685,7 @@ design.mdpkg
 
 ```text
 design/
-├─ README.md
+├─ index.md
 ├─ manifest.json
 ├─ diagrams/
 │  ├─ system.puml
@@ -774,9 +694,10 @@ design/
    └─ ui.png
 ```
 
-ユーザーは `README.md` を一般的な Markdown Viewer で開くことで、文書を閲覧できます。
+ユーザーは `index.md` を一般的な Markdown Viewer で開くことで、文書を閲覧できます。
 
 
+ユーザーは `manifest.json` の `entrypoint` に指定された Markdown 文書を一般的な Markdown Viewer で開き、通常の Markdown リンクをたどることで他の文書を閲覧できます。
 
 ## 20. 例
 
@@ -785,67 +706,19 @@ design/
 ```text
 example.mdpkg
 └─ ZIP
-   ├─ README.md
    ├─ manifest.json
-   ├─ diagrams/
-   │  ├─ architecture.puml
-   │  ├─ architecture.svg
-   │  ├─ sequence.mmd
-   │  └─ sequence.svg
-   ├─ images/
-   │  └─ screenshot.png
-   └─ attachments/
-      └─ sample.json
-```
-
-### 20.2 README.md
-
-```markdown
-# Example System
-
-## 概要
-
-Example System の設計文書です。
-
-## システム構成
-
-![システム構成図](diagrams/architecture.svg)
-
-## シーケンス
-
-![シーケンス図](diagrams/sequence.svg)
-
-## 画面
-
-![画面例](images/screenshot.png)
-
-## サンプルデータ
-
-[sample.json](attachments/sample.json)
-```
-
-### 20.3 manifest.json
-
-```json
-{
-  "format": "mdpkg",
-  "version": "1.0",
-  "entrypoint": "README.md",
-  "title": "Example System",
-  "description": "Example System の設計文書",
-  "resources": [
-    {
-      "source": "diagrams/architecture.puml",
-      "rendered": "diagrams/architecture.svg",
-      "type": "plantuml"
-    },
-    {
-      "source": "diagrams/sequence.mmd",
-      "rendered": "diagrams/sequence.svg",
-      "type": "mermaid"
-    }
-  ]
-}
+   ├─ index.md
+   ├─ architecture/
+   │  ├─ overview.md
+   │  ├─ diagrams/
+   │  │  ├─ architecture.puml
+   │  │  └─ architecture.svg
+   │  └─ images/
+   │     └─ screenshot.png
+   └─ operation/
+      ├─ guide.md
+      └─ attachments/
+         └─ sample.json
 ```
 
 
@@ -856,7 +729,7 @@ MDPKG のフォーマットバージョンは `manifest.json` の `version` で�
 
 ```json
 {
-  "version": "1.0"
+  "version": "2.0"
 }
 ```
 
@@ -888,12 +761,12 @@ MDPKG Reader は、自身が認識できない追加フィールドを可能な�
 
 ## 22. 将来拡張
 
-MDPKG v1 では単一のメイン Markdown 文書を中心とします。
+MDPKG v2 では、複数 Markdown 文書およびサブディレクトリによる階層化をサポートします。
+
+文書の論理的なナビゲーション構造や表示順序については定義せず、パッケージ内のファイルおよびディレクトリ構造として管理します。
 
 将来的には次の拡張を検討できます。
 
-- 複数 Markdown 文書
-- 文書階層
 - ナビゲーション
 - 目次メタデータ
 - テーマ
@@ -917,8 +790,10 @@ MDPKG v1 では単一のメイン Markdown 文書を中心とします。
 
 ## 23. 非目標
 
-MDPKG v1 では、次の機能を必須要件としません。
+MDPKG v2 では、次の機能を必須要件としません。
 
+- 文書の論理的なナビゲーション構造
+- 文書の表示順序を定義するメタデータ
 - Word のような完全な WYSIWYG レイアウト
 - ページ単位の固定レイアウト
 - 独自フォントの必須埋め込み
@@ -937,45 +812,54 @@ MDPKG は固定レイアウト文書形式ではなく、Markdown を中心と�
 
 ### 24.1 MDPKG Package
 
-MDPKG v1 に適合するパッケージは、最低限次の条件を満たさなければなりません。
+MDPKG v2 に適合するパッケージは、最低限次の条件を満たさなければなりません。
 
 - ZIP 形式である
 - `.mdpkg` 拡張子を使用する
-- ルートに `README.md` が存在する
 - ルートに `manifest.json` が存在する
 - `manifest.json` の `format` が `mdpkg` である
 - `manifest.json` に `version` が存在する
-- `README.md` が UTF-8 である
-- パッケージ内部リソースへの参照がパッケージルートを越えない
+- `version` の MAJOR version が `2` である
+- `manifest.json` に `entrypoint` が存在する
+- `entrypoint` がパッケージ内部に存在する Markdown 文書を指している
+- すべての Markdown 文書が UTF-8 である
+- パッケージ内部リソースへの参照を正規化した結果がパッケージルートを越えない
 
 ### 24.2 MDPKG Reader
 
-MDPKG v1 Reader は最低限次を満たさなければなりません。
+MDPKG v2 Reader は最低限次を満たさなければなりません。
 
 - ZIP コンテナを読み取れる
 - `manifest.json` を解析できる
-- `README.md` を読み取れる
+- `entrypoint` に指定された Markdown 文書を読み取れる
+- 複数 Markdown 文書を読み取れる
+- サブディレクトリ内の Markdown 文書を扱える
 - Markdown を表示できる
-- パッケージ内の相対リソースを解決できる
+- Markdown 文書間の相対リンクを解決できる
+- Markdown 文書を基準とした相対リソース参照を解決できる
+- `..` を含む参照を正規化できる
 - パッケージ外へのパス・トラバーサルを防止する
 
 ### 24.3 MDPKG Writer
 
-MDPKG v1 Writer は最低限次を満たさなければなりません。
+MDPKG v2 Writer は最低限次を満たさなければなりません。
 
 - 適合する ZIP コンテナを生成できる
-- `README.md` を UTF-8 で生成する
+- Markdown 文書を UTF-8 で生成する
+- 複数 Markdown 文書を格納できる
+- サブディレクトリを保持できる
 - 有効な `manifest.json` を生成する
+- `entrypoint` に有効な Markdown 文書を指定する
 - 内部参照を相対パスとして生成する
-- パッケージ外参照を生成しない
-
-
+- 正規化後にパッケージ外を参照するパスを生成しない
 
 ## 25. 推奨事項
 
 MDPKG 文書の作成者には次を推奨します。
 
-- `README.md` 単体でも内容が理解できるようにする
+- `entrypoint` に指定された Markdown 文書から、主要な Markdown 文書へ通常の Markdown リンクでたどれるようにする
+- 各 Markdown 文書に、その文書のタイトルとなる H1 見出しを記述する
+- 関連する Markdown、画像、図、添付ファイルを必要に応じて同じサブディレクトリ周辺にまとめる
 - 文書表示に必要なリソースをすべてパッケージに含める
 - 図ソースだけでなくレンダリング済み画像も含める
 - 図のレンダリング形式には SVG を優先する
@@ -994,6 +878,10 @@ MDPKG において ZIP は文書形式そのものではなく、複数の既存
 
 MDPKG の長期的な可搬性は、専用アプリケーションの永続性ではなく、パッケージ内部のデータが一般的なツールで理解可能であることによって確保します。
 
+MDPKG v2 では、複数 Markdown 文書とディレクトリ階層を導入しますが、文書の論理構造を独自メタデータへ閉じ込めません。
+
+Markdown 文書同士は通常の相対リンクで接続し、画像、図、添付ファイルも通常の相対パスで参照します。
+
 そのため MDPKG は、次の状態を理想とします。
 
 ```text
@@ -1007,7 +895,7 @@ ZIP を展開する
 
     ↓
 
-README.md
+index.md
 SVG / PNG
 PlantUML
 Mermaid
